@@ -1,0 +1,11 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'aa_altcorp/altcorp.css' %}">
+<div class="altcorp-hero p-4 mb-4 d-flex justify-content-between align-items-center">
+    <div><h1 class="mb-1">{{ title }}</h1><p class="mb-0 opacity-75">{{ subtitle }}</p></div>
+    {% if perms.aa_altcorp.manage_relationships %}<a class="btn btn-light" href="{% url 'aa_altcorp:add_character_token' %}">Add character ACL access</a>{% endif %}
+</div>
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item"><a class="nav-link{% if active_tab == 'corporations' %} active{% endif %}" href="{% url 'aa_altcorp:index' %}">Alt corporations</a></li>
+    <li class="nav-item"><a class="nav-link{% if active_tab == 'contacts' %} active{% endif %}" href="{% url 'aa_altcorp:contacts' %}">Contacts</a></li>
+    {% if perms.aa_altcorp.manage_relationships %}<li class="nav-item"><a class="nav-link{% if active_tab == 'acls' %} active{% endif %}" href="{% url 'aa_altcorp:access_lists' %}">ESI ACLs</a></li>{% endif %}
+</ul>

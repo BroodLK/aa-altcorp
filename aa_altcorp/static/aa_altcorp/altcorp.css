@@ -1,0 +1,20 @@
+/* Shared page chrome for the plugin's pages.
+ *
+ * A static file rather than an inline <style> in _page_header.html: that block
+ * was re-sent with every page, and could not be cached or CSP-hashed.
+ */
+.altcorp-hero {
+    background: linear-gradient(135deg, #18283b, #285b68);
+    color: white;
+    border-radius: .75rem;
+}
+
+.altcorp-card {
+    border: 0;
+    box-shadow: 0 .25rem 1rem rgba(20, 35, 50, .08);
+}
+
+.altcorp-results {
+    max-height: 18rem;
+    overflow-y: auto;
+}

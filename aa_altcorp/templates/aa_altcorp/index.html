@@ -1,0 +1,34 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% block page_title %}Alt Corps{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+    {% include "aa_altcorp/_page_header.html" with title="Alt corporations" subtitle="Find a character, review its account, and manage corporation relationships." active_tab="corporations" %}
+    {% if configuration_missing %}<div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert"><div><strong>Alt Corp settings need attention.</strong> Configure {{ configuration_missing|join:", " }} before relying on audit results.</div><a class="btn btn-sm btn-warning" href="{% url 'admin:aa_altcorp_altcorpsettings_changelist' %}">Check settings</a></div>{% endif %}
+    <div class="card altcorp-card mb-4"><div class="card-body p-4">
+        <h2 class="h5">1. Find the character and corporation</h2>
+        <p class="text-muted">Both fields are part of the same search. The character result tells you which main account will receive the corporation.</p>
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-5"><label class="form-label" for="character">Character name</label><input class="form-control" id="character" name="character" placeholder="Search character name" value="{{ request.GET.character }}"></div>
+            <div class="col-md-5"><label class="form-label" for="corporation">Corporation name</label><input class="form-control" id="corporation" name="corporation" placeholder="Search corporation name" value="{{ request.GET.corporation }}"></div>
+            <div class="col-md-2"><button class="btn btn-primary w-100">Search</button></div>
+        </form>
+    </div></div>
+    {% if request.GET.character or request.GET.corporation %}<div class="row g-4">
+        <div class="col-lg-6"><div class="card altcorp-card h-100"><div class="card-body p-4"><h2 class="h5">Character results</h2>
+            {% if characters %}<div class="altcorp-results list-group">{% for result in characters %}<div class="list-group-item"><strong>{{ result.character.character_name }}</strong><span class="d-block">Auth account: {{ result.user.username }}</span><small class="text-muted">{{ result.status }}</small>{% if perms.aa_altcorp.manage_relationships %}<form method="post" action="{% url 'aa_altcorp:associate_character' %}" class="mt-2">{% csrf_token %}<input type="hidden" name="user_id" value="{{ result.user.id }}"><input type="hidden" name="character_id" value="{{ result.character.character_id }}"><input type="hidden" name="character_name" value="{{ result.character.character_name }}"><button class="btn btn-sm btn-outline-success">Associate this character</button></form>{% endif %}</div>{% endfor %}</div>{% elif request.GET.character %}<p class="text-muted mb-0">No character found with that name.</p>{% else %}<p class="text-muted mb-0">Enter a character name to find its account.</p>{% endif %}
+        </div></div></div>
+        <div class="col-lg-6"><div class="card altcorp-card h-100"><div class="card-body p-4"><h2 class="h5">Corporation results</h2>
+            {% if corporations %}<div class="altcorp-results list-group">{% for corporation in corporations %}<div class="list-group-item">{{ corporation.corporation_name }} <small class="text-muted">({{ corporation.corporation_id }})</small></div>{% endfor %}</div>{% elif request.GET.corporation %}<p class="text-muted mb-0">No corporation Alliance Auth knows about matches that name. Only corporations with a linked character are searchable.</p>{% else %}<p class="text-muted mb-0">Enter a corporation name to find it.</p>{% endif %}
+        </div></div></div>
+    </div>
+    {% if characters and corporations and perms.aa_altcorp.manage_relationships %}<div class="card altcorp-card my-4"><div class="card-body p-4">
+        <h2 class="h5">2. Attach corporation to this account</h2>
+        <form method="post" action="{% url 'aa_altcorp:attach' %}" class="row g-2 align-items-end">{% csrf_token %}
+            <div class="col-md-5"><label class="form-label" for="user_id">Account</label><select class="form-select" id="user_id" name="user_id">{% for result in characters %}<option value="{{ result.user.id }}">{{ result.character.character_name }} → {{ result.user.username }}</option>{% endfor %}</select></div>
+            <div class="col-md-5"><label class="form-label" for="corporation_id">Corporation</label><select class="form-select" id="corporation_id" name="corporation_id">{% for corporation in corporations %}<option value="{{ corporation.corporation_id }}">{{ corporation.corporation_name }}</option>{% endfor %}</select></div>
+            <div class="col-md-2"><button class="btn btn-success w-100">Attach</button></div>
+        </form>
+    </div></div>{% endif %}{% endif %}
+    <div class="card altcorp-card mt-4"><div class="card-body p-4"><h2 class="h5">Attached corporations</h2><div class="list-group list-group-flush">{% for relationship in relationships %}<div class="list-group-item px-0 d-flex justify-content-between align-items-start"><div>{{ relationship.user.username }} <span class="text-muted">— {{ relationship.corporation_name }}</span>{% if relationship.review %}<small class="d-block text-muted">{{ relationship.review.reason }}</small>{% endif %}</div>{% if perms.aa_altcorp.manage_relationships %}<form method="post" action="{% url 'aa_altcorp:detach' relationship.id %}" class="ms-3">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Remove</button></form>{% endif %}</div>{% empty %}<div class="list-group-item px-0 text-muted">No relationships attached.</div>{% endfor %}</div></div></div>
+</div>
+{% endblock %}

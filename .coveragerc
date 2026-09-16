@@ -1,0 +1,10 @@
+[run]
+source = aa_altcorp
+omit =
+    */migrations/*
+    */tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING
