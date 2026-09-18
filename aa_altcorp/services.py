@@ -397,9 +397,9 @@ def contact_associations(contact):
         ).select_related("user")
         fallback_field = "corporation_name"
     elif contact.contact_type == "character":
-        associations = AltCharacter.objects.filter(
-            character_id=contact.contact_id
-        ).select_related("user")
+        associations = AltCharacter.objects.filter(character_id=contact.contact_id).select_related(
+            "user"
+        )
         fallback_field = "character_name"
     else:
         return []
@@ -417,8 +417,7 @@ def contact_associations(contact):
         main_names = {}
 
     return [
-        main_names.get(association.user_id)
-        or getattr(association, fallback_field)
+        main_names.get(association.user_id) or getattr(association, fallback_field)
         for association in associations
     ]
 

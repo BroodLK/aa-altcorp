@@ -59,10 +59,12 @@ def index(request):
     relationships = list(AltCorporation.objects.select_related("user", "review"))
     try:
         from allianceauth.authentication.models import UserProfile
-        main_names = dict(UserProfile.objects.filter(
-            user_id__in=[relationship.user_id for relationship in relationships],
-            main_character__isnull=False,
-        ).values_list("user_id", "main_character__character_name"))
+        main_names = dict(
+            UserProfile.objects.filter(
+                user_id__in=[relationship.user_id for relationship in relationships],
+                main_character__isnull=False,
+            ).values_list("user_id", "main_character__character_name")
+        )
     except (ImportError, RuntimeError):
         main_names = {}
     for relationship in relationships:
