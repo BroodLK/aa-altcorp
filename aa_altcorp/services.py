@@ -390,20 +390,37 @@ def contacts_diagnosis(settings):
 
 
 def contact_associations(contact):
-    """Return attached corporation or character associations."""
+    """Return the main characters attached to a contact."""
     if contact.contact_type == "corporation":
-        return list(
-            AltCorporation.objects.filter(corporation_id=contact.contact_id).values_list(
-                "corporation_name", flat=True
-            )
+        associations = AltCorporation.objects.filter(
+            corporation_id=contact.contact_id
+        ).select_related("user")
+        fallback_field = "corporation_name"
+    elif contact.contact_type == "character":
+        associations = AltCharacter.objects.filter(
+            character_id=contact.contact_id
+        ).select_related("user")
+        fallback_field = "character_name"
+    else:
+        return []
+
+    try:
+        from allianceauth.authentication.models import UserProfile
+
+        main_names = dict(
+            UserProfile.objects.filter(
+                user_id__in=[association.user_id for association in associations],
+                main_character__isnull=False,
+            ).values_list("user_id", "main_character__character_name")
         )
-    if contact.contact_type == "character":
-        return list(
-            AltCharacter.objects.filter(character_id=contact.contact_id).values_list(
-                "character_name", flat=True
-            )
-        )
-    return []
+    except (ImportError, RuntimeError):
+        main_names = {}
+
+    return [
+        main_names.get(association.user_id)
+        or getattr(association, fallback_field)
+        for association in associations
+    ]
 
 
 def search_main_characters(query, limit=25):
