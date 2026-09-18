@@ -56,7 +56,19 @@ def index(request):
         else []
     )
     # review is a reverse OneToOneField, so it joins rather than needing a second query.
-    relationships = AltCorporation.objects.select_related("user", "review")
+    relationships = list(AltCorporation.objects.select_related("user", "review"))
+    try:
+        from allianceauth.authentication.models import UserProfile
+        main_names = dict(UserProfile.objects.filter(
+            user_id__in=[relationship.user_id for relationship in relationships],
+            main_character__isnull=False,
+        ).values_list("user_id", "main_character__character_name"))
+    except (ImportError, RuntimeError):
+        main_names = {}
+    for relationship in relationships:
+        relationship.main_character_name = main_names.get(
+            relationship.user_id, relationship.user.username
+        )
     settings = AltCorpSettings.current()
     configuration_missing = []
     if not settings.approved_states:
