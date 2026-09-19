@@ -154,6 +154,7 @@ class AuthSnapshot:
         # used by users_for() so alert displays agree with the relationships
         # page.
         from ..models import AltCorporation
+        from ..models import AltCharacter
 
         for corporation_id, user_id in AltCorporation.objects.values_list(
             "corporation_id", "user_id"
@@ -163,6 +164,23 @@ class AuthSnapshot:
             # An AltCorporation row is the plugin's explicit approval of this
             # relationship.  Preserve that approval even when the user's
             # current CharacterOwnership data is unavailable.
+            snapshot.approved_user_ids.add(user_id)
+
+        # Apply the same relationship fallback for explicitly linked
+        # characters.  Character alerts use snapshot.characters directly, so
+        # without this merge an AltCharacter can appear on the relationships
+        # page while the alert still reports no Auth user.
+        for character_id, character_name, user_id in AltCharacter.objects.values_list(
+            "character_id", "character_name", "user_id"
+        ):
+            character_id = int(character_id)
+            user_id = int(user_id)
+            if character_id not in snapshot.characters:
+                snapshot.characters[character_id] = CharacterFacts(
+                    character_id=character_id,
+                    character_name=character_name or "",
+                    user_id=user_id,
+                )
             snapshot.approved_user_ids.add(user_id)
 
         snapshot.user_groups = _user_groups(set(snapshot.user_states))
