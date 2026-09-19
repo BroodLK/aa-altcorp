@@ -161,10 +161,6 @@ class AuthSnapshot:
         ):
             user_id = int(user_id)
             snapshot.corporations.setdefault(int(corporation_id), set()).add(user_id)
-            # An AltCorporation row is the plugin's explicit approval of this
-            # relationship.  Preserve that approval even when the user's
-            # current CharacterOwnership data is unavailable.
-            snapshot.approved_user_ids.add(user_id)
 
         # Apply the same relationship fallback for explicitly linked
         # characters.  Character alerts use snapshot.characters directly, so
@@ -181,7 +177,6 @@ class AuthSnapshot:
                     character_name=character_name or "",
                     user_id=user_id,
                 )
-            snapshot.approved_user_ids.add(user_id)
 
         snapshot.user_groups = _user_groups(set(snapshot.user_states))
         snapshot.corp_alliance = {

@@ -80,6 +80,16 @@ class FanOutTests(TestCase):
     def test_a_failing_sync_returns_zero_rather_than_raising(self, _sync):
         self.assertEqual(tasks.sync_character_acl(95000001), 0)
 
+    @patch("aa_altcorp.tasks.sync_character_access_lists", return_value=2)
+    def test_force_refreshes_each_tracked_character(self, sync):
+        CharacterAccessToken.objects.create(character_id=95000001, token_id=1)
+        CharacterAccessToken.objects.create(character_id=95000002, token_id=2)
+
+        self.assertEqual(tasks.force_refresh_all_access_lists(), 4)
+        self.assertEqual(sync.call_count, 2)
+        for call in sync.call_args_list:
+            self.assertTrue(call.kwargs["force_refresh"])
+
 
 class ScanTaskTests(TestCase):
     def test_the_scan_is_a_no_op_while_disabled(self):

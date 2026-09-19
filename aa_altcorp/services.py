@@ -255,15 +255,16 @@ def sync_character_access_lists(character_id, force_refresh=False):
         list_operation = _esi_operation(client, "GetCharactersAccessListsListing")
         detail_operation = _esi_operation(client, "GetCharactersAccessListsDetail")
         try:
-            listing = list_operation(
-                character_id=character_id, token=access_token
-            ).result(force_refresh=force_refresh)
+            listing = list_operation(character_id=character_id, token=access_token).result(
+                force_refresh=force_refresh
+            )
         except HTTPNotModified:
             # A 304 means the set of ACLs is unchanged, not that it is empty, so
             # replay what is stored rather than returning early.
-            if not force_refresh and CharacterAccessList.objects.filter(
-                character_id=character_id
-            ).exists():
+            if (
+                not force_refresh
+                and CharacterAccessList.objects.filter(character_id=character_id).exists()
+            ):
                 logger.debug("ACL listing unchanged for character %s", character_id)
                 return _reenrich_stored_access_lists(client, character_id)
             # Nothing stored to replay, so the cached ETag would wedge this

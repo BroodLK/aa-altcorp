@@ -109,6 +109,18 @@ def sync_all_access_lists():
     return len(character_ids)
 
 
+@shared_task(name="aa_altcorp.tasks.force_refresh_all_access_lists", ignore_result=True)
+def force_refresh_all_access_lists():
+    """Refresh every tracked character's ACL data, bypassing ESI caches."""
+    refreshed = 0
+    for character_id in _tracked_character_ids():
+        try:
+            refreshed += sync_character_access_lists(character_id, force_refresh=True)
+        except _esi_error_types():
+            logger.exception("Unable to force-refresh ACLs for character %s", character_id)
+    return refreshed
+
+
 @shared_task(
     name="aa_altcorp.tasks.sync_character_acl",
     ignore_result=True,

@@ -5,11 +5,14 @@ from django.core.management.base import BaseCommand, CommandError
 AUDIT_TASK_NAME = "aa-altcorp-audit-and-acl-sync"
 SCAN_TASK_NAME = "aa-altcorp-alert-scan"
 REFRESH_TASK_NAME = "aa-altcorp-refresh-alert-messages"
+FORCE_REFRESH_TASK_NAME = "aa-altcorp-force-refresh-acls"
 
 #: How often to re-render Discord messages whose alert narrowed or resolved with
 #: no interaction to edit through -- a scan changing it, or an exemption revoked
 #: in Django admin. Without this the buttons on a posted message go stale.
-REFRESH_INTERVAL_MINUTES = 15
+REFRESH_INTERVAL_MINUTES = 1
+DEFAULT_SCAN_CRON = "30 * * * *"
+FORCE_REFRESH_CRON = "24 * * * *"
 
 
 class Command(BaseCommand):
@@ -28,10 +31,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--scan-cron",
             default=None,
-            help=(
-                "Five-field cron for the alert scan. "
-                "Defaults to the notification interval in Alt Corp settings."
-            ),
+            help=(f"Five-field cron for the alert scan. Defaults to {DEFAULT_SCAN_CRON!r}."),
         )
         parser.add_argument(
             "--remove",
@@ -51,6 +51,7 @@ class Command(BaseCommand):
         self._schedule_audit(models, hours)
         self._schedule_scan(models, options["scan_cron"])
         self._schedule_refresh(models)
+        self._schedule_force_refresh(models)
 
     # -- helpers ------------------------------------------------------------
 
@@ -86,9 +87,7 @@ class Command(BaseCommand):
 
     def _schedule_scan(self, models, scan_cron):
         CrontabSchedule, _, PeriodicTask = models
-        from ...models import AltCorpSettings
-
-        cron = scan_cron or AltCorpSettings.current().notification_interval
+        cron = scan_cron or DEFAULT_SCAN_CRON
         fields = cron.split()
         if len(fields) != 5:
             raise CommandError(f"--scan-cron needs exactly five fields, got {cron!r}.")
@@ -135,9 +134,33 @@ class Command(BaseCommand):
             )
         )
 
+    def _schedule_force_refresh(self, models):
+        CrontabSchedule, _, PeriodicTask = models
+        minute, hour, day_of_month, month_of_year, day_of_week = FORCE_REFRESH_CRON.split()
+        schedule, _ = CrontabSchedule.objects.get_or_create(
+            minute=minute,
+            hour=hour,
+            day_of_month=day_of_month,
+            month_of_year=month_of_year,
+            day_of_week=day_of_week,
+        )
+        task, created = PeriodicTask.objects.update_or_create(
+            name=FORCE_REFRESH_TASK_NAME,
+            defaults={
+                "task": "aa_altcorp.tasks.force_refresh_all_access_lists",
+                "interval": None,
+                "crontab": schedule,
+                "enabled": True,
+            },
+        )
+        action = "Created" if created else "Updated"
+        self.stdout.write(
+            self.style.SUCCESS(f"{action} {task.name} on cron '{FORCE_REFRESH_CRON}'.")
+        )
+
     def _remove(self, models):
         _, _, PeriodicTask = models
         deleted, _ = PeriodicTask.objects.filter(
-            name__in=(AUDIT_TASK_NAME, SCAN_TASK_NAME, REFRESH_TASK_NAME)
+            name__in=(AUDIT_TASK_NAME, SCAN_TASK_NAME, REFRESH_TASK_NAME, FORCE_REFRESH_TASK_NAME)
         ).delete()
         self.stdout.write(self.style.SUCCESS(f"Removed {deleted} scheduled task(s)."))

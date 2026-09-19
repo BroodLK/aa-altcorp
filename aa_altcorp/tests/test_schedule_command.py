@@ -9,9 +9,10 @@ from aa_altcorp.management.commands.schedule_altcorp_tasks import (
     AUDIT_TASK_NAME,
     REFRESH_TASK_NAME,
     SCAN_TASK_NAME,
+    FORCE_REFRESH_TASK_NAME,
 )
 
-ALL_TASK_NAMES = (AUDIT_TASK_NAME, SCAN_TASK_NAME, REFRESH_TASK_NAME)
+ALL_TASK_NAMES = (AUDIT_TASK_NAME, SCAN_TASK_NAME, REFRESH_TASK_NAME, FORCE_REFRESH_TASK_NAME)
 
 
 def _schedule(*args):
@@ -35,18 +36,22 @@ class ScheduleCommandTests(TestCase):
             self.assertIn(name, output)
         audit = self.PeriodicTask.objects.get(name=AUDIT_TASK_NAME)
         scan = self.PeriodicTask.objects.get(name=SCAN_TASK_NAME)
+        force_refresh = self.PeriodicTask.objects.get(name=FORCE_REFRESH_TASK_NAME)
         self.assertEqual(audit.task, "aa_altcorp.tasks.audit_alt_corporations")
         self.assertEqual(scan.task, "aa_altcorp.tasks.run_alert_scan")
         # An interval task and a crontab task must not carry both schedules.
         self.assertIsNone(audit.crontab)
         self.assertIsNone(scan.interval)
+        self.assertEqual(force_refresh.task, "aa_altcorp.tasks.force_refresh_all_access_lists")
+        self.assertIsNone(force_refresh.interval)
+        self.assertIsNotNone(force_refresh.crontab)
 
     def test_the_scan_cron_defaults_to_the_notification_interval(self):
         _schedule()
 
         scan = self.PeriodicTask.objects.get(name=SCAN_TASK_NAME)
-        self.assertEqual(scan.crontab.minute, "0")
-        self.assertEqual(scan.crontab.hour, "0")
+        self.assertEqual(scan.crontab.minute, "30")
+        self.assertEqual(scan.crontab.hour, "*")
 
     def test_an_explicit_cron_is_used(self):
         _schedule("--scan-cron", "17 * * * *")
@@ -62,6 +67,17 @@ class ScheduleCommandTests(TestCase):
         self.assertEqual(refresh.task, "aa_altcorp.tasks.refresh_alert_messages")
         self.assertIsNone(refresh.crontab)
         self.assertIsNotNone(refresh.interval)
+        self.assertEqual(refresh.interval.every, 1)
+
+    def test_it_schedules_the_force_refresh_at_minute_24(self):
+        _schedule()
+
+        from aa_altcorp.management.commands.schedule_altcorp_tasks import FORCE_REFRESH_TASK_NAME
+
+        force_refresh = self.PeriodicTask.objects.get(name=FORCE_REFRESH_TASK_NAME)
+        self.assertEqual(force_refresh.crontab.minute, "24")
+        self.assertEqual(force_refresh.crontab.hour, "*")
+        self.assertIsNone(force_refresh.interval)
 
     def test_running_it_twice_is_idempotent(self):
         _schedule()
