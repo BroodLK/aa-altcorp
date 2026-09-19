@@ -145,9 +145,11 @@ def _acl_access(availability):
     access list, so keep the newest and remember which characters saw it.
     """
     rows = {}
+    membership_rows = {}
     seen_via = {}
     for row in CharacterAccessList.objects.all():
         seen_via.setdefault(row.access_list_id, []).append(row.character_id)
+        membership_rows.setdefault(row.access_list_id, []).append(row)
         existing = rows.get(row.access_list_id)
         # synced_at is auto_now, so it is set in practice -- but a row loaded
         # from a fixture may not have it, and comparing against None raises.
@@ -161,17 +163,18 @@ def _acl_access(availability):
     prepared = {}
     for access_list_id, row in rows.items():
         names[access_list_id] = row.name or f"ACL {access_list_id}"
-        membership = row.membership or {}
+        memberships = [item.membership or {} for item in membership_rows[access_list_id]]
         allowed = set()
         for group, (id_field, entity_type) in GROUP_TIERS.items():
-            for entry in membership.get(group) or ():
-                entity_id = entry.get(id_field)
-                if not entity_id:
-                    continue
-                if entry.get("access") in ALLOWING:
-                    allowed.add((entity_type, int(entity_id)))
+            for membership in memberships:
+                for entry in membership.get(group) or ():
+                    entity_id = entry.get(id_field)
+                    if not entity_id:
+                        continue
+                    if entry.get("access") in ALLOWING:
+                        allowed.add((entity_type, int(entity_id)))
         prepared[access_list_id] = {
-            "allow_everyone": bool(membership.get("allow_everyone")),
+            "allow_everyone": any(item.get("allow_everyone") for item in memberships),
             "allowed": allowed,
             "seen_via": sorted(set(seen_via.get(access_list_id, ()))),
         }
