@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Keep bursts below Discord's per-channel message limit.  The lock also
 # coordinates posts and edits made concurrently by the bot task runner.
-DISCORD_REQUEST_INTERVAL = 1.1
+DISCORD_REQUEST_INTERVAL = 2.0
 _DISCORD_REQUEST_LOCK = asyncio.Lock()
 _last_discord_request = 0.0
 

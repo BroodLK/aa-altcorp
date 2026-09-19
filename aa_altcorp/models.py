@@ -162,7 +162,7 @@ class AltCorpSettings(models.Model):
         ),
     )
     alert_batch_size = models.PositiveSmallIntegerField(
-        default=10, help_text="Alerts delivered per batch, to stay inside Discord rate limits"
+        default=200, help_text="Alerts delivered per batch, to stay inside Discord rate limits"
     )
     renotify_interval_days = models.PositiveSmallIntegerField(
         default=0, help_text="Re-deliver still-open alerts after this many days; 0 notifies once"
