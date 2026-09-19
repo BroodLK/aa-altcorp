@@ -173,11 +173,11 @@ def toggle_access_list_monitoring(request):
     )
     if request.POST.get("configure"):
         policy.expect_positive_contacts = bool(request.POST.get("expect_positive_contacts"))
-        policy.expect_corporations = _posted_ids(request.POST.get("expect_corporations", ""))
-        policy.expect_alliances = _posted_ids(request.POST.get("expect_alliances", ""))
+        policy.expect_corporations = _posted_ids(request.POST.getlist("expect_corporations"))
+        policy.expect_alliances = _posted_ids(request.POST.getlist("expect_alliances"))
         policy.expect_entities = [
             {"entity_type": "character", "entity_id": entity_id}
-            for entity_id in _posted_ids(request.POST.get("expect_characters", ""))
+            for entity_id in _posted_ids(request.POST.getlist("expect_characters"))
         ]
         policy.save(
             update_fields=(
@@ -200,11 +200,12 @@ def toggle_access_list_monitoring(request):
 
 def _posted_ids(value):
     ids = []
-    for item in (value or "").replace(",", " ").split():
-        try:
-            ids.append(int(item))
-        except ValueError:
-            continue
+    for value_item in value or []:
+        for item in str(value_item).replace(",", " ").split():
+            try:
+                ids.append(int(item))
+            except ValueError:
+                continue
     return ids
 
 

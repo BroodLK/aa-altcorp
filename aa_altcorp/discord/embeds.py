@@ -187,7 +187,39 @@ def _facet_name(facet):
 
 
 def _alert_description(alert):
-    kinds = {facet.facet_type for facet in open_facets(alert)}
+    facets = open_facets(alert)
+    kinds = {facet.facet_type for facet in facets}
+    has_contact = any(
+        facet.facet_type == taxonomy.FacetType.CONTACT
+        and facet.reason_text.startswith("Holds standing")
+        for facet in facets
+    )
+    has_acl = any(
+        facet.facet_type == taxonomy.FacetType.ACL and facet.reason_text.startswith("Has access")
+        for facet in facets
+    )
+    if has_contact or has_acl:
+        present_kinds = set()
+        if has_contact:
+            present_kinds.add(taxonomy.FacetType.CONTACT)
+        if has_acl:
+            present_kinds.add(taxonomy.FacetType.ACL)
+        if present_kinds == {taxonomy.FacetType.CONTACT}:
+            return "The entity has contact standings."
+        if present_kinds == {taxonomy.FacetType.ACL}:
+            return "The entity has ACL access."
+        return "The entity has contact standings and ACL access."
+    if taxonomy.direction_for(alert.alert_type) is taxonomy.Direction.PRESENT:
+        if kinds == {taxonomy.FacetType.CONTACT}:
+            return "The entity has contact standings but is not associated with an Auth user."
+        if kinds == {taxonomy.FacetType.ACL}:
+            return "The entity has ACL access but is not associated with an Auth user."
+        if taxonomy.FacetType.CONTACT in kinds and taxonomy.FacetType.ACL in kinds:
+            return (
+                "The entity has contact standings and ACL access but is not associated "
+                "with an Auth user."
+            )
+        return "The entity is present but is not associated with an Auth user."
     if kinds == {taxonomy.FacetType.CONTACT}:
         return "The entity is missing required contact standings."
     if kinds == {taxonomy.FacetType.ACL}:
