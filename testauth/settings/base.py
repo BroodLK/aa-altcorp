@@ -7,8 +7,8 @@ reasons:
   libraries **out** of INSTALLED_APPS, so the suite proves the plugin degrades
   gracefully without them.  ``tests/test_import_isolation.py`` guards that.
 * this module installs them, so the suite proves the integration actually works:
-  ``AuthSnapshot.from_auth``, the ``auth_hooks`` registrations, the charlink
-  hook, the ``services.search_*`` helpers, and the admin form choices.
+  ``AuthSnapshot.from_auth``, the ``auth_hooks`` registrations, the
+  ``services.search_*`` helpers, and the admin form choices.
 
 Several settings here are load-bearing rather than cosmetic; each is commented.
 """

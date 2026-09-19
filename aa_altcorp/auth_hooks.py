@@ -1,7 +1,5 @@
 """Alliance Auth navigation and URL hooks."""
 
-from typing import Literal
-
 from allianceauth import hooks
 from allianceauth.services.hooks import MenuItemHook, UrlHook
 from django.utils.translation import gettext_lazy as _
@@ -31,11 +29,6 @@ def register_menu():
 @hooks.register("url_hook")
 def register_urls():
     return UrlHook(urls, "aa_altcorp", r"^aa-altcorp/")
-
-
-@hooks.register("charlink")
-def register_charlink_hook() -> Literal["aa_altcorp.charlink_hook"]:
-    return "aa_altcorp.charlink_hook"
 
 
 @hooks.register("discord_cogs_hook")

@@ -25,7 +25,6 @@ PACKAGE_ROOT = pathlib.Path(__file__).resolve().parent.parent / "aa_altcorp"
 #: Loaded by Alliance Auth or by the bot, so a hard dependency is fine there.
 EXEMPT = {
     "auth_hooks.py",
-    "charlink_hook.py",
     "discord/views.py",
     "discord/modals.py",
     "discord/bot_functions.py",

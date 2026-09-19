@@ -227,6 +227,19 @@ def test_only_valid_state_users_create_expectations(db, make_snapshot):
     assert (CORP, 98000002) not in expected
 
 
+def test_members_of_standing_target_alliance_do_not_need_separate_contacts(db, make_snapshot):
+    snapshot = make_snapshot(
+        characters=[_member(95000001, 1, alliance_id=99005338)],
+        approved_user_ids=[1],
+        corp_alliance={98000001: 99005338},
+    )
+
+    expected = expect.expected_contacts(_settings(), snapshot)
+
+    assert (CHAR, 95000001) not in expected
+    assert (CORP, 98000001) not in expected
+
+
 def test_tier_toggles_switch_whole_tiers_off(db, make_snapshot):
     snapshot = make_snapshot(
         characters=[_member(95000001, 1, alliance_id=99001111)], approved_user_ids=[1]

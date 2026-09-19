@@ -59,6 +59,7 @@ def index(request):
     relationships = list(AltCorporation.objects.select_related("user", "review"))
     try:
         from allianceauth.authentication.models import UserProfile
+
         main_names = dict(
             UserProfile.objects.filter(
                 user_id__in=[relationship.user_id for relationship in relationships],

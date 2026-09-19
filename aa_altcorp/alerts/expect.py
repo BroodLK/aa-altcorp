@@ -28,13 +28,17 @@ def expected_contacts(settings, snapshot):
     if settings.expect_contact_characters:
         for character_id in character_ids:
             facts = snapshot.characters.get(character_id)
+            if facts and _is_in_standing_target(facts.alliance_id, settings):
+                continue
             role = "main character" if facts and facts.is_main else "attached character"
             _add(expected, settings, taxonomy.EntityType.CHARACTER, character_id, role)
 
     if settings.expect_contact_corporations:
         for character_id in character_ids:
             facts = snapshot.characters.get(character_id)
-            if facts and facts.corporation_id:
+            if facts and facts.corporation_id and not _is_in_standing_target(
+                facts.alliance_id, settings
+            ):
                 _add(
                     expected,
                     settings,
@@ -43,6 +47,8 @@ def expected_contacts(settings, snapshot):
                     f"corporation of {facts.character_name or character_id}",
                 )
         for corporation_id, corporation_name in _attached_corporations(snapshot):
+            if _is_in_standing_target(snapshot.corp_alliance.get(int(corporation_id)), settings):
+                continue
             _add(
                 expected,
                 settings,
@@ -101,3 +107,13 @@ def _add(expected, settings, entity_type, entity_id, reason):
         if entity_type == settings.standing_target_type:
             return
     expected.setdefault((entity_type, entity_id), reason)
+
+
+def _is_in_standing_target(alliance_id, settings):
+    """Alliance standing covers its member characters and corporations."""
+    return (
+        settings.standing_target_type == taxonomy.EntityType.ALLIANCE
+        and alliance_id is not None
+        and settings.standing_target_id
+        and int(alliance_id) == int(settings.standing_target_id)
+    )

@@ -101,7 +101,7 @@ def _listing(*ids):
 
 @pytest.fixture
 def linked_character(db):
-    """A character with a stored ACL token, as charlink/views would create."""
+    """A character with a stored ACL token, as the admin flow would create."""
     user = User.objects.create_user("acl-owner")
     token = Token.objects.create(
         user=user,

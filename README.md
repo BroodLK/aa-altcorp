@@ -29,18 +29,12 @@ croniter >= 6, < 7
 django-celery-beat >= 2.7, < 3
 ```
 
-Discord buttons are optional:
-
-```bash
-pip install 'aa-altcorp[discord]'
-```
-
 ## Installation
 
 Activate the virtual environment used by Alliance Auth and install the package:
 
 ```bash
-pip install aa-altcorp
+pip install allianceauth-altcorp
 ```
 
 Add the application to `INSTALLED_APPS`:
@@ -81,17 +75,7 @@ The command is idempotent. `--hours` changes the audit interval, and `--remove` 
 
 ## Discord alerts
 
-Install the optional Discord integration and add `aadiscordbot` to `INSTALLED_APPS`. Route its tasks to the bot queue:
-
-```python
-app.conf.task_routes = {
-    "aadiscordbot.tasks.*": {"queue": "aadiscordbot"},
-}
-```
-
-The queue route is required because these task bodies are consumed by the bot worker. Without the bot, choose webhook delivery; webhook alerts are informational and have no interactive buttons.
-
-Discord actions are authorized by configured Discord role IDs and are recorded with the Discord actor and linked Auth user when available.
+Discord integration is provided by [allianceauth-discordbot](https://github.com/Solar-Helix-Independent-Transport/allianceauth-discordbot). Go to that repository for installation, configuration, and bot worker instructions.
 
 ## Permissions
 
