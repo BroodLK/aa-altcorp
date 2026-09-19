@@ -65,16 +65,22 @@ def open_facets(alert):
 def alert_embed(alert):
     """The alert as it stands right now, listing only unresolved facets."""
     facets = open_facets(alert)
-    fields = [_field("Entity", entity_label(alert))]
+    label = entity_label(alert)
+    main_name = alert.detail.get("main_character_name")
+    if main_name and alert.entity_type == taxonomy.EntityType.CHARACTER:
+        label = f"Main's character: {label}"
+    elif main_name and alert.entity_type == taxonomy.EntityType.CORPORATION:
+        label = f"Main's corporation: {label}"
+    fields = []
 
     users = alert.detail.get("users") or []
     states = [s for s in (alert.detail.get("states") or []) if s]
-    if users:
-        fields.append(
-            _field("Auth user", ", ".join(str(u) for u in users) + _states_suffix(states), True)
-        )
+    if users and states:
+        fields.append(_field("Auth User", f"State: {', '.join(states)}", True))
+    elif users:
+        fields.append(_field("Auth User", "State: unknown", True))
     else:
-        fields.append(_field("Auth user", "none", True))
+        fields.append(_field("Auth User", "none", True))
 
     for facet in facets[:_MAX_FACET_FIELDS]:
         fields.append(_field(_facet_name(facet), facet.reason_text))
@@ -91,8 +97,8 @@ def alert_embed(alert):
         )
 
     embed = {
-        "title": _clip(alert.summary or entity_label(alert), TITLE_LIMIT),
-        "description": _clip(taxonomy.ALERT_LABELS.get(alert.alert_type, ""), DESCRIPTION_LIMIT),
+        "title": _clip(alert.summary or label, TITLE_LIMIT),
+        "description": _clip(_alert_description(alert), DESCRIPTION_LIMIT),
         "color": COLOUR_OPEN,
         "fields": fields[:FIELD_LIMIT],
         "footer": {
@@ -178,6 +184,17 @@ def alert_summary_line(alert):
 
 def _facet_name(facet):
     return _facet_label(facet.facet_type, facet.access_list_name, facet.access_list_id)
+
+
+def _alert_description(alert):
+    kinds = {facet.facet_type for facet in open_facets(alert)}
+    if kinds == {taxonomy.FacetType.CONTACT}:
+        return "The entity is missing required contact standings."
+    if kinds == {taxonomy.FacetType.ACL}:
+        return "The entity is missing required ACL access."
+    if taxonomy.FacetType.CONTACT in kinds and taxonomy.FacetType.ACL in kinds:
+        return "The entity is missing required contact standings and ACL access."
+    return taxonomy.ALERT_LABELS.get(alert.alert_type, "")
 
 
 def _facet_label(facet_type, access_list_name, access_list_id):

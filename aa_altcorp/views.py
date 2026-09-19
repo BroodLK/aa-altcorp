@@ -138,10 +138,17 @@ def access_lists(request):
     monitored = set(
         AccessListPolicy.objects.filter(enabled=True).values_list("access_list_id", flat=True)
     )
+    policies = {policy.access_list_id: policy for policy in AccessListPolicy.objects.all()}
+    for acl in access_lists:
+        acl.monitor_policy = policies.get(acl.access_list_id)
     return render(
         request,
         "aa_altcorp/access_lists.html",
-        {"access_lists": access_lists, "monitored_access_lists": monitored},
+        {
+            "access_lists": access_lists,
+            "monitored_access_lists": monitored,
+            "acl_policies": policies,
+        },
     )
 
 
@@ -163,7 +170,11 @@ def toggle_access_list_monitoring(request):
         access_list_id=access_list_id,
         defaults={"name": name, "enabled": True},
     )
-    if not created:
+    if request.POST.get("configure"):
+        policy.expect_positive_contacts = bool(request.POST.get("expect_positive_contacts"))
+        policy.expect_corporations = _posted_ids(request.POST.get("expect_corporations", ""))
+        policy.save(update_fields=("expect_positive_contacts", "expect_corporations", "updated_at"))
+    if not created and not request.POST.get("configure"):
         policy.enabled = not policy.enabled
         policy.save(update_fields=("enabled", "updated_at"))
     messages.success(
@@ -171,6 +182,16 @@ def toggle_access_list_monitoring(request):
         f"{name} is now {'being monitored' if policy.enabled else 'ignored by alerts'}.",
     )
     return redirect("aa_altcorp:access_lists")
+
+
+def _posted_ids(value):
+    ids = []
+    for item in (value or "").replace(",", " ").split():
+        try:
+            ids.append(int(item))
+        except ValueError:
+            continue
+    return ids
 
 
 @login_required

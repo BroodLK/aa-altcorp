@@ -60,7 +60,9 @@ class AuthSnapshot:
         if entity_type == "corporation":
             return set(self.corporations.get(entity_id, ()))
         if entity_type == "alliance":
-            return set(self.alliances.get(entity_id, ()))
+            # Alliances are EVE entities, never Auth users.  Their membership
+            # is useful for policy expansion, but must not imply a user link.
+            return set()
         return set()
 
     def is_associated(self, entity_type, entity_id):

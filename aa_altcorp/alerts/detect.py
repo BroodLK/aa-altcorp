@@ -258,7 +258,14 @@ def _evaluate_entity(
     direction = taxonomy.direction_for(alert_type)
     if direction is taxonomy.Direction.MISSING:
         facets = _missing_facets(
-            settings, key, blue, acl_access, acl_names, expected_contacts, expected_access
+            settings,
+            snapshot,
+            key,
+            blue,
+            acl_access,
+            acl_names,
+            expected_contacts,
+            expected_access,
         )
     else:
         facets = _present_facets(key, blue, acl_access, acl_names, policies_by_acl)
@@ -273,10 +280,26 @@ def _evaluate_entity(
         "states": snapshot.state_names_for(entity_type, entity_id),
         "approved": approved,
     }
+    main_character = _main_character(snapshot, users)
+    if main_character:
+        detail["main_character_name"] = main_character.character_name
+        detail["main_character_id"] = main_character.character_id
     if direction is taxonomy.Direction.MISSING:
         detail["expected_because"] = expected_contacts.get(key, "")
     else:
         detail["standing"] = blue.get(key)
+
+    summary = _summary(alert_type, entity_type, entity_name, entity_id, facets)
+    if main_character and entity_type in (
+        taxonomy.EntityType.CHARACTER,
+        taxonomy.EntityType.CORPORATION,
+    ):
+        prefix = (
+            "Main's character"
+            if entity_type == taxonomy.EntityType.CHARACTER
+            else "Main's corporation"
+        )
+        summary = f"{prefix} {summary}"
 
     return CandidateAlert(
         alert_type=alert_type,
@@ -284,13 +307,15 @@ def _evaluate_entity(
         entity_id=entity_id,
         entity_name=entity_name,
         user_id=user_id,
-        summary=_summary(alert_type, entity_type, entity_name, entity_id, facets),
+        summary=summary,
         detail=detail,
         facets=tuple(facets),
     )
 
 
-def _missing_facets(settings, key, blue, acl_access, acl_names, expected_contacts, expected_access):
+def _missing_facets(
+    settings, snapshot, key, blue, acl_access, acl_names, expected_contacts, expected_access
+):
     entity_type, entity_id = key
     facets = []
     if key in expected_contacts and key not in blue:
@@ -309,6 +334,10 @@ def _missing_facets(settings, key, blue, acl_access, acl_names, expected_contact
         reason = tiers.get(entity_type, {}).get(entity_id)
         if reason is None or access_list_id in holding:
             continue
+        if entity_type == taxonomy.EntityType.CHARACTER and _parent_has_access(
+            snapshot, entity_id, access_list_id, acl_access
+        ):
+            continue
         facets.append(
             CandidateFacet(
                 facet_type=taxonomy.FacetType.ACL,
@@ -319,6 +348,19 @@ def _missing_facets(settings, key, blue, acl_access, acl_names, expected_contact
             )
         )
     return facets
+
+
+def _parent_has_access(snapshot, character_id, access_list_id, acl_access):
+    """A corporation/alliance ACL entry grants its members access too."""
+    facts = snapshot.characters.get(character_id)
+    if facts is None:
+        return False
+    return bool(
+        access_list_id
+        in acl_access.get((taxonomy.EntityType.CORPORATION, facts.corporation_id), set())
+        or access_list_id
+        in acl_access.get((taxonomy.EntityType.ALLIANCE, facts.alliance_id), set())
+    )
 
 
 def _present_facets(key, blue, acl_access, acl_names, policies_by_acl):
@@ -377,11 +419,20 @@ def _summary(alert_type, entity_type, entity_name, entity_id, facets):
     label = entity_name or f"{entity_type} {entity_id}"
     kinds = {facet.facet_type for facet in facets}
     if kinds == {taxonomy.FacetType.CONTACT}:
-        what = "contact standing"
+        what = "contact standings"
     elif kinds == {taxonomy.FacetType.ACL}:
         what = "ACL access"
     else:
-        what = "contact standing and ACL access"
+        what = "contact standings and ACL access"
     if taxonomy.direction_for(alert_type) is taxonomy.Direction.MISSING:
         return f"{label} is missing {what}"
     return f"{label} has {what}"
+
+
+def _main_character(snapshot, users):
+    for user_id in sorted(users):
+        character_id = snapshot.main_character_of.get(user_id)
+        facts = snapshot.characters.get(character_id)
+        if facts:
+            return facts
+    return None
