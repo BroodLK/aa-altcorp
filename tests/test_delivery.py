@@ -221,7 +221,7 @@ def test_the_resolved_embed_shows_the_spec_fields(make_alert, actor):
 
     embed = embeds.resolved_embed(alert, log)
 
-    assert embed["title"] == "RESOLVED IN AUTH"
+    assert embed["title"].startswith("Resolved: Example Corp")
     names = {field["name"]: field["value"] for field in embed["fields"]}
     assert names["Reason"] == "Third-party logistics partner"
     assert names["Expires"] == "Never"

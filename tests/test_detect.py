@@ -229,6 +229,33 @@ def test_policy_enables_missing_access_alerts(
     assert "blue contact" in acl_facets[0].reason_text
 
 
+def test_acl_access_from_expected_corporation_covers_its_characters(
+    alert_settings, stub_aa_contacts, make_snapshot, acl_row
+):
+    """A corporation entry on an ACL grants access to its member characters."""
+    stub_aa_contacts(alliance_rows=[])
+    acl_row(
+        access_list_id=750878,
+        name="FIGL Bookmarks Manage",
+        corporations=[{"corporation_id": 98630647, "access": "Allowed"}],
+    )
+    AccessListPolicy.objects.create(
+        access_list_id=750878,
+        expect_positive_contacts=False,
+        expect_corporations=[98630647],
+        expected_tier=CHAR,
+    )
+    snapshot = make_snapshot(
+        characters=[_member(95000001, 1, corporation_id=98630647)],
+        approved_user_ids=[1],
+    )
+
+    candidates, _ = detect.evaluate(alert_settings, snapshot)
+
+    character = next(c for c in candidates if c.entity_id == 95000001)
+    assert not any(f.facet_type == taxonomy.FacetType.ACL for f in character.facets)
+
+
 def test_allow_everyone_suppresses_the_missing_family(
     alert_settings, stub_aa_contacts, make_snapshot, acl_row
 ):

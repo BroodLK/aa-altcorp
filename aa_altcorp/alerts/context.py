@@ -147,6 +147,24 @@ class AuthSnapshot:
             if main is not None:
                 snapshot.main_character_of[user_id] = int(main.character_id)
 
+        # AltCorporation is the plugin's durable relationship record.  It can
+        # exist before Alliance Auth has a current CharacterOwnership row (or
+        # after that row has gone stale), but it still identifies the Auth user
+        # attached to the corporation.  Include it in the same association map
+        # used by users_for() so alert displays agree with the relationships
+        # page.
+        from ..models import AltCorporation
+
+        for corporation_id, user_id in AltCorporation.objects.values_list(
+            "corporation_id", "user_id"
+        ):
+            user_id = int(user_id)
+            snapshot.corporations.setdefault(int(corporation_id), set()).add(user_id)
+            # An AltCorporation row is the plugin's explicit approval of this
+            # relationship.  Preserve that approval even when the user's
+            # current CharacterOwnership data is unavailable.
+            snapshot.approved_user_ids.add(user_id)
+
         snapshot.user_groups = _user_groups(set(snapshot.user_states))
         snapshot.corp_alliance = {
             int(corp_id): _as_int(alliance_id)

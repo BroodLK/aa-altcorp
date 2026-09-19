@@ -237,7 +237,7 @@ def search_users(query):
     )[:25]
 
 
-def sync_character_access_lists(character_id):
+def sync_character_access_lists(character_id, force_refresh=False):
     """Fetch and persist ESI ACLs through django-esi's OpenAPI client."""
     try:
         from esi.exceptions import HTTPNotModified
@@ -255,11 +255,15 @@ def sync_character_access_lists(character_id):
         list_operation = _esi_operation(client, "GetCharactersAccessListsListing")
         detail_operation = _esi_operation(client, "GetCharactersAccessListsDetail")
         try:
-            listing = list_operation(character_id=character_id, token=access_token).result()
+            listing = list_operation(
+                character_id=character_id, token=access_token
+            ).result(force_refresh=force_refresh)
         except HTTPNotModified:
             # A 304 means the set of ACLs is unchanged, not that it is empty, so
             # replay what is stored rather than returning early.
-            if CharacterAccessList.objects.filter(character_id=character_id).exists():
+            if not force_refresh and CharacterAccessList.objects.filter(
+                character_id=character_id
+            ).exists():
                 logger.debug("ACL listing unchanged for character %s", character_id)
                 return _reenrich_stored_access_lists(client, character_id)
             # Nothing stored to replay, so the cached ETag would wedge this
@@ -286,7 +290,7 @@ def sync_character_access_lists(character_id):
                     character_id=character_id,
                     access_list_id=access_list_id,
                     token=access_token,
-                ).result()
+                ).result(force_refresh=force_refresh)
             except HTTPNotModified:
                 # ETags mean an unchanged ACL is never re-fetched, so replay what is
                 # already stored to pick up names and ordering it was saved without.
@@ -298,13 +302,24 @@ def sync_character_access_lists(character_id):
                         character_id,
                     )
                     continue
-                logger.debug("ACL %s unchanged for character %s", access_list_id, character_id)
-                fetched[access_list_id] = {
-                    "name": row.name,
-                    "description": row.description,
-                    "membership": row.membership,
-                }
-                continue
+                if not force_refresh:
+                    logger.debug("ACL %s unchanged for character %s", access_list_id, character_id)
+                    fetched[access_list_id] = {
+                        "name": row.name,
+                        "description": row.description,
+                        "membership": row.membership,
+                    }
+                    continue
+                logger.info(
+                    "ACL %s returned 304 during forced refresh for character %s",
+                    access_list_id,
+                    character_id,
+                )
+                details = detail_operation(
+                    character_id=character_id,
+                    access_list_id=access_list_id,
+                    token=access_token,
+                ).result(force_refresh=True)
             fetched[access_list_id] = {
                 "name": details.name,
                 "description": details.description,

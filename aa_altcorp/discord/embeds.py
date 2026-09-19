@@ -127,7 +127,7 @@ def resolved_embed(alert, log):
         str(log.actor_discord_id) if log.actor_discord_id else "unknown"
     )
     embed = {
-        "title": "RESOLVED IN AUTH",
+        "title": _clip(f"Resolved: {alert.summary or entity_label(alert)}", TITLE_LIMIT),
         "description": _clip(
             "The Auth-side alert is suppressed. Nothing was changed in EVE.",
             DESCRIPTION_LIMIT,
@@ -135,7 +135,6 @@ def resolved_embed(alert, log):
         "color": COLOUR_RESOLVED,
         "fields": [
             _field("Action", log.get_action_display(), True),
-            _field("Entity", entity_label(alert), True),
             _field("Covers", covered or "—"),
             _field("Reason", log.reason),
             _field("Expires", expires, True),
@@ -151,13 +150,13 @@ def resolved_embed(alert, log):
 def resolved_alert_embed(alert):
     """Render a condition that cleared during a later scan."""
     embed = {
-        "title": _clip(f"Resolved: {entity_label(alert)}", TITLE_LIMIT),
+        "title": _clip(f"Resolved: {alert.summary or entity_label(alert)}", TITLE_LIMIT),
         "description": _clip(
             "This alert condition is no longer present. The alert was cleared automatically.",
             DESCRIPTION_LIMIT,
         ),
         "color": COLOUR_RESOLVED,
-        "fields": [_field("Entity", entity_label(alert))],
+        "fields": [],
         "footer": {
             "text": _clip(
                 "Informational only. This app never changes EVE contacts or access lists.",
