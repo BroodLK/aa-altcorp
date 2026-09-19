@@ -46,10 +46,10 @@ def test_valid_user_missing_standing_is_condition_one(
 
     candidates, _ = detect.evaluate(alert_settings, snapshot)
 
-    corp = next(c for c in candidates if c.entity_type == CORP)
-    assert corp.alert_type == taxonomy.AlertType.MISSING_FOR_VALID_USER
-    assert [f.facet_type for f in corp.facets] == [taxonomy.FacetType.CONTACT]
-    assert corp.summary == "Blue Corp is missing contact standing" or "missing" in corp.summary
+    character = next(c for c in candidates if c.entity_type == CHAR)
+    assert character.alert_type == taxonomy.AlertType.MISSING_FOR_VALID_USER
+    assert [f.facet_type for f in character.facets] == [taxonomy.FacetType.CONTACT]
+    assert "missing contact standings" in character.summary
 
 
 def test_invalid_user_with_standing_is_condition_two(

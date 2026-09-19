@@ -292,14 +292,19 @@ def _evaluate_entity(
         detail["standing"] = blue.get(key)
 
     summary = _summary(alert_type, entity_type, entity_name, entity_id, facets)
-    if main_character and entity_type in (
-        taxonomy.EntityType.CHARACTER,
-        taxonomy.EntityType.CORPORATION,
+    if (
+        main_character
+        and main_character.character_name
+        and entity_type
+        in (
+            taxonomy.EntityType.CHARACTER,
+            taxonomy.EntityType.CORPORATION,
+        )
     ):
         prefix = (
-            "Main's character"
+            f"{main_character.character_name}'s character"
             if entity_type == taxonomy.EntityType.CHARACTER
-            else "Main's corporation"
+            else f"{main_character.character_name}'s corporation"
         )
         summary = f"{prefix} {summary}"
 

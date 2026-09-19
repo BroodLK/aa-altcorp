@@ -34,20 +34,9 @@ def expected_contacts(settings, snapshot):
             _add(expected, settings, taxonomy.EntityType.CHARACTER, character_id, role)
 
     if settings.expect_contact_corporations:
-        for character_id in character_ids:
-            facts = snapshot.characters.get(character_id)
-            if (
-                facts
-                and facts.corporation_id
-                and not _is_in_standing_target(facts.alliance_id, settings)
-            ):
-                _add(
-                    expected,
-                    settings,
-                    taxonomy.EntityType.CORPORATION,
-                    facts.corporation_id,
-                    f"corporation of {facts.character_name or character_id}",
-                )
+        # Corporation standing is inherited by its characters during missing
+        # contact evaluation. It must not create a separate corporation
+        # requirement for every character that is being checked.
         for corporation_id, corporation_name in _attached_corporations(snapshot):
             if _is_in_standing_target(snapshot.corp_alliance.get(int(corporation_id)), settings):
                 continue
