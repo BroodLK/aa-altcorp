@@ -45,6 +45,19 @@ def entity_label(alert):
     return f"{name} ({alert.entity_type} {alert.entity_id})"
 
 
+def entity_image_url(alert):
+    """Return the EVE image endpoint appropriate for the alert entity."""
+    paths = {
+        taxonomy.EntityType.CHARACTER: "characters/{}/portrait",
+        taxonomy.EntityType.CORPORATION: "corporations/{}/logo",
+        taxonomy.EntityType.ALLIANCE: "alliances/{}/logo",
+    }
+    path = paths.get(alert.entity_type)
+    if not path:
+        return ""
+    return f"https://images.evetech.net/{path.format(int(alert.entity_id))}?size=128"
+
+
 def open_facets(alert):
     return [f for f in alert.facets.all() if f.state == taxonomy.AlertState.OPEN]
 
@@ -77,7 +90,7 @@ def alert_embed(alert):
             )
         )
 
-    return {
+    embed = {
         "title": _clip(alert.summary or entity_label(alert), TITLE_LIMIT),
         "description": _clip(taxonomy.ALERT_LABELS.get(alert.alert_type, ""), DESCRIPTION_LIMIT),
         "color": COLOUR_OPEN,
@@ -89,6 +102,10 @@ def alert_embed(alert):
             )
         },
     }
+    image_url = entity_image_url(alert)
+    if image_url:
+        embed["thumbnail"] = {"url": image_url}
+    return embed
 
 
 def resolved_embed(alert, log):
@@ -103,7 +120,7 @@ def resolved_embed(alert, log):
     actor = log.actor_discord_name or (
         str(log.actor_discord_id) if log.actor_discord_id else "unknown"
     )
-    return {
+    embed = {
         "title": "RESOLVED IN AUTH",
         "description": _clip(
             "The Auth-side alert is suppressed. Nothing was changed in EVE.",
@@ -119,6 +136,33 @@ def resolved_embed(alert, log):
             _field("Actioned by", actor, True),
         ],
     }
+    image_url = entity_image_url(alert)
+    if image_url:
+        embed["thumbnail"] = {"url": image_url}
+    return embed
+
+
+def resolved_alert_embed(alert):
+    """Render a condition that cleared during a later scan."""
+    embed = {
+        "title": _clip(f"Resolved: {entity_label(alert)}", TITLE_LIMIT),
+        "description": _clip(
+            "This alert condition is no longer present. The alert was cleared automatically.",
+            DESCRIPTION_LIMIT,
+        ),
+        "color": COLOUR_RESOLVED,
+        "fields": [_field("Entity", entity_label(alert))],
+        "footer": {
+            "text": _clip(
+                "Informational only. This app never changes EVE contacts or access lists.",
+                FOOTER_LIMIT,
+            )
+        },
+    }
+    image_url = entity_image_url(alert)
+    if image_url:
+        embed["thumbnail"] = {"url": image_url}
+    return embed
 
 
 def alert_summary_line(alert):

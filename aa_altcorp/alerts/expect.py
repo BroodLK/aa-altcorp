@@ -36,8 +36,10 @@ def expected_contacts(settings, snapshot):
     if settings.expect_contact_corporations:
         for character_id in character_ids:
             facts = snapshot.characters.get(character_id)
-            if facts and facts.corporation_id and not _is_in_standing_target(
-                facts.alliance_id, settings
+            if (
+                facts
+                and facts.corporation_id
+                and not _is_in_standing_target(facts.alliance_id, settings)
             ):
                 _add(
                     expected,

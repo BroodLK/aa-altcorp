@@ -9,17 +9,24 @@ discards the sent message and so can never report the message id we need in
 order to edit the post later.
 """
 
+import asyncio
 import logging
+import time
 
 import discord
 
-from ..models import Alert, AltCorpSettings
 from ..alerts import taxonomy
-from . import dbsafe, embeds
+from ..models import Alert, AltCorpSettings
+from . import actions, dbsafe, embeds
 from .views import AlertView
-from . import actions
 
 logger = logging.getLogger(__name__)
+
+# Keep bursts below Discord's per-channel message limit.  The lock also
+# coordinates posts and edits made concurrently by the bot task runner.
+DISCORD_REQUEST_INTERVAL = 1.1
+_DISCORD_REQUEST_LOCK = asyncio.Lock()
+_last_discord_request = 0.0
 
 
 async def post_alert(bot, alert_pk):
@@ -37,7 +44,8 @@ async def post_alert(bot, alert_pk):
         # and a silently undelivered alert is worse than a logged failure.
         raise RuntimeError(f"Discord channel {channel_id} is not visible to the bot")
 
-    message = await channel.send(embed=discord.Embed.from_dict(embed), view=view)
+    async with _discord_request_slot():
+        message = await channel.send(embed=discord.Embed.from_dict(embed), view=view)
     await dbsafe.run_db(_record_message, alert_pk, channel_id, message.id)
 
 
@@ -54,11 +62,30 @@ async def edit_alert_message(bot, alert_pk):
         logger.warning("Cannot refresh alert %s: channel %s is not visible", alert_pk, channel_id)
         return
     try:
-        message = await channel.fetch_message(message_id)
+        async with _discord_request_slot():
+            message = await channel.fetch_message(message_id)
     except discord.NotFound:
         logger.info("Alert %s message was deleted in Discord; nothing to refresh", alert_pk)
         return
-    await message.edit(embed=discord.Embed.from_dict(embed), view=view)
+    async with _discord_request_slot():
+        await message.edit(embed=discord.Embed.from_dict(embed), view=view)
+
+
+class _DiscordRequestSlot:
+    async def __aenter__(self):
+        global _last_discord_request
+        await _DISCORD_REQUEST_LOCK.acquire()
+        delay = DISCORD_REQUEST_INTERVAL - (time.monotonic() - _last_discord_request)
+        if delay > 0:
+            await asyncio.sleep(delay)
+        _last_discord_request = time.monotonic()
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        _DISCORD_REQUEST_LOCK.release()
+
+
+def _discord_request_slot():
+    return _DiscordRequestSlot()
 
 
 # -- synchronous halves, run in a worker thread -----------------------------
@@ -88,7 +115,11 @@ def _load_for_edit(alert_pk):
     return (
         int(alert.discord_channel_id),
         int(alert.discord_message_id),
-        embeds.alert_embed(alert),
+        (
+            embeds.resolved_alert_embed(alert)
+            if alert.state == taxonomy.AlertState.RESOLVED
+            else embeds.alert_embed(alert)
+        ),
         _view_data(alert.pk, available, labels),
     )
 
@@ -106,7 +137,8 @@ def _make_view(data):
     alert_pk = int(data[0][0].rsplit(":", 1)[1])
     labels = {
         next(
-            action for action in taxonomy.ActionType
+            action
+            for action in taxonomy.ActionType
             if actions.encode_custom_id(alert_pk, action) == custom_id
         ): label
         for custom_id, label in data

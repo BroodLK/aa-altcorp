@@ -41,6 +41,8 @@ class AuthSnapshot:
     user_groups: dict[int, set[str]] = field(default_factory=dict)
     #: corporation id -> alliance id, from the local EveCorporationInfo cache
     corp_alliance: dict[int, int | None] = field(default_factory=dict)
+    #: (entity type, entity id) -> local EVE name
+    entity_names: dict[tuple[str, int], str] = field(default_factory=dict)
     available: bool = True
 
     @classmethod
@@ -88,7 +90,11 @@ class AuthSnapshot:
         """Build a snapshot in three queries, or an empty one without Auth."""
         try:
             from allianceauth.authentication.models import CharacterOwnership
-            from allianceauth.eveonline.models import EveCorporationInfo
+            from allianceauth.eveonline.models import (
+                EveAllianceInfo,
+                EveCharacter,
+                EveCorporationInfo,
+            )
         except (ImportError, RuntimeError):
             # A missing INSTALLED_APPS entry raises RuntimeError, not ImportError.
             logger.debug("Alliance Auth is unavailable; alert scan has no association data")
@@ -146,6 +152,33 @@ class AuthSnapshot:
                 "corporation_id", "alliance__alliance_id"
             )
         }
+        snapshot.entity_names.update(
+            {
+                ("character", int(entity_id)): name
+                for entity_id, name in EveCharacter.objects.values_list(
+                    "character_id", "character_name"
+                )
+                if name
+            }
+        )
+        snapshot.entity_names.update(
+            {
+                ("corporation", int(entity_id)): name
+                for entity_id, name in EveCorporationInfo.objects.values_list(
+                    "corporation_id", "corporation_name"
+                )
+                if name
+            }
+        )
+        snapshot.entity_names.update(
+            {
+                ("alliance", int(entity_id)): name
+                for entity_id, name in EveAllianceInfo.objects.values_list(
+                    "alliance_id", "alliance_name"
+                )
+                if name
+            }
+        )
         return snapshot
 
 

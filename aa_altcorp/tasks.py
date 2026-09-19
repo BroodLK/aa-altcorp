@@ -143,6 +143,10 @@ def run_alert_scan():
         result.skipped or "none",
     )
     deliver_pending_alerts.apply_async(countdown=5)
+    if result.resolved:
+        # The scan leaves the existing Discord message in place so its history
+        # remains visible; refresh it after reconciliation to show RESOLVED.
+        refresh_alert_messages.apply_async(countdown=5)
     return result.created
 
 

@@ -361,6 +361,9 @@ def _primary_user(snapshot, users, approved):
 
 
 def _snapshot_name(snapshot, entity_type, entity_id):
+    name = snapshot.entity_names.get((entity_type, entity_id))
+    if name:
+        return name
     if entity_type == taxonomy.EntityType.CHARACTER:
         facts = snapshot.characters.get(entity_id)
         if facts:
