@@ -32,7 +32,7 @@ def test_users_for_resolves_each_tier(make_snapshot):
 
     assert snapshot.users_for("character", 95000001) == {7}
     assert snapshot.users_for("corporation", 98000001) == {7}
-    assert snapshot.users_for("alliance", 99001111) == {7}
+    assert snapshot.users_for("alliance", 99001111) == set()
     assert snapshot.users_for("faction", 500001) == set()
     assert snapshot.users_for("character", 99999999) == set()
 

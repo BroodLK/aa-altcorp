@@ -25,6 +25,7 @@ from .services import (
     contact_associations,
     contacts_diagnosis,
     local_entity_name,
+    search_acl_entities,
     search_characters,
     search_local_corporations,
     search_main_characters,
@@ -173,7 +174,20 @@ def toggle_access_list_monitoring(request):
     if request.POST.get("configure"):
         policy.expect_positive_contacts = bool(request.POST.get("expect_positive_contacts"))
         policy.expect_corporations = _posted_ids(request.POST.get("expect_corporations", ""))
-        policy.save(update_fields=("expect_positive_contacts", "expect_corporations", "updated_at"))
+        policy.expect_alliances = _posted_ids(request.POST.get("expect_alliances", ""))
+        policy.expect_entities = [
+            {"entity_type": "character", "entity_id": entity_id}
+            for entity_id in _posted_ids(request.POST.get("expect_characters", ""))
+        ]
+        policy.save(
+            update_fields=(
+                "expect_positive_contacts",
+                "expect_corporations",
+                "expect_alliances",
+                "expect_entities",
+                "updated_at",
+            )
+        )
     if not created and not request.POST.get("configure"):
         policy.enabled = not policy.enabled
         policy.save(update_fields=("enabled", "updated_at"))
@@ -209,6 +223,13 @@ def add_character_token(request, token: Token):
 def main_character_search(request):
     """Feed the contact assignment dropdown with matching main characters."""
     return JsonResponse({"results": search_main_characters(request.GET.get("q", ""))})
+
+
+@permission_required("aa_altcorp.manage_relationships")
+def acl_entity_search(request):
+    return JsonResponse(
+        {"results": search_acl_entities(request.GET.get("q", ""), request.GET.get("type", ""))}
+    )
 
 
 @permission_required("aa_altcorp.manage_relationships")

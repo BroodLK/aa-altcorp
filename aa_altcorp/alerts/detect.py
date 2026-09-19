@@ -245,6 +245,8 @@ def _evaluate_entity(
     policies_by_acl,
 ):
     key = (entity_type, entity_id)
+    if _is_standing_target(settings, key):
+        return None
     users = snapshot.users_for(entity_type, entity_id)
     approved = snapshot.has_approved_user(entity_type, entity_id)
 
@@ -313,12 +315,21 @@ def _evaluate_entity(
     )
 
 
+def _is_standing_target(settings, key):
+    entity_type, entity_id = key
+    return bool(
+        settings.standing_target_id
+        and entity_type == settings.standing_target_type
+        and int(entity_id) == int(settings.standing_target_id)
+    )
+
+
 def _missing_facets(
     settings, snapshot, key, blue, acl_access, acl_names, expected_contacts, expected_access
 ):
     entity_type, entity_id = key
     facets = []
-    if key in expected_contacts and key not in blue:
+    if key in expected_contacts and not _has_contact_coverage(snapshot, key, blue):
         facets.append(
             CandidateFacet(
                 facet_type=taxonomy.FacetType.CONTACT,
@@ -348,6 +359,25 @@ def _missing_facets(
             )
         )
     return facets
+
+
+def _has_contact_coverage(snapshot, key, blue):
+    """Standing on a corporation/alliance covers its member entities."""
+    if key in blue:
+        return True
+    entity_type, entity_id = key
+    if entity_type == taxonomy.EntityType.CHARACTER:
+        facts = snapshot.characters.get(entity_id)
+        if facts is None:
+            return False
+        return (taxonomy.EntityType.CORPORATION, facts.corporation_id) in blue or (
+            taxonomy.EntityType.ALLIANCE,
+            facts.alliance_id,
+        ) in blue
+    if entity_type == taxonomy.EntityType.CORPORATION:
+        alliance_id = snapshot.corp_alliance.get(entity_id)
+        return (taxonomy.EntityType.ALLIANCE, alliance_id) in blue
+    return False
 
 
 def _parent_has_access(snapshot, character_id, access_list_id, acl_access):

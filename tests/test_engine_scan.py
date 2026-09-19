@@ -1,7 +1,7 @@
 """Reconciliation: idempotence, resolution, and the no-mass-resolve guard."""
 
 from aa_altcorp.alerts import engine, taxonomy
-from aa_altcorp.models import Alert, AlertFacet
+from aa_altcorp.models import AccessListPolicy, Alert, AlertFacet
 
 from .conftest import ContactRow
 
@@ -24,6 +24,7 @@ def test_scan_creates_one_alert_with_its_facets(
 ):
     stub_aa_contacts(alliance_rows=[ContactRow(98009999, CORP, 5.0, "Third Party")])
     acl_row(access_list_id=7001, corporations=[{"corporation_id": 98009999, "access": "Allowed"}])
+    AccessListPolicy.objects.create(access_list_id=7001)
 
     result = engine.run_scan(alert_settings)
 

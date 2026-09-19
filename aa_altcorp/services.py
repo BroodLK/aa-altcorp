@@ -443,6 +443,29 @@ def search_main_characters(query, limit=25):
     ]
 
 
+def search_acl_entities(query, entity_type, limit=15):
+    """Search cached EVE entities for ACL policy scoping."""
+    try:
+        from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter, EveCorporationInfo
+    except (ImportError, RuntimeError):
+        return []
+    models = {
+        "character": (EveCharacter, "character_id", "character_name"),
+        "corporation": (EveCorporationInfo, "corporation_id", "corporation_name"),
+        "alliance": (EveAllianceInfo, "alliance_id", "alliance_name"),
+    }
+    model_info = models.get(entity_type)
+    if not model_info:
+        return []
+    model, id_field, name_field = model_info
+    return [
+        {"id": entity_id, "name": name}
+        for entity_id, name in model.objects.filter(
+            **{f"{name_field}__icontains": query}
+        ).values_list(id_field, name_field)[:limit]
+    ]
+
+
 def local_entity_name(entity_type, entity_id):
     """Resolve an EVE id to a name from Alliance Auth's local cache only.
 

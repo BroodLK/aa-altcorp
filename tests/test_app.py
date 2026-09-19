@@ -22,7 +22,7 @@ CHARACTER_ID = 212620763
 
 def test_app_is_installed():
     config = apps.get_app_config("aa_altcorp")
-    assert config.verbose_name == "AA Alt Corp v0.0.1"
+    assert config.verbose_name == "AA Alt Corp v0.0.5"
 
 
 class _Membership:

@@ -9,6 +9,7 @@ urlpatterns = [
     path("contacts/assign/", views.assign_contact, name="assign_contact"),
     path("contacts/mains/", views.main_character_search, name="main_character_search"),
     path("access-lists/", views.access_lists, name="access_lists"),
+    path("access-lists/entities/", views.acl_entity_search, name="acl_entity_search"),
     path(
         "access-lists/toggle-monitoring/",
         views.toggle_access_list_monitoring,

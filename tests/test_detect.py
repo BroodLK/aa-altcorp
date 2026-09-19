@@ -113,6 +113,7 @@ def test_a_corporation_alert_covers_both_facets(
 ):
     stub_aa_contacts(alliance_rows=[ContactRow(98009999, CORP, 5.0, "Third Party")])
     acl_row(corporations=[{"corporation_id": 98009999, "access": "Allowed"}])
+    AccessListPolicy.objects.create(access_list_id=7001)
 
     candidates, _ = detect.evaluate(alert_settings, make_snapshot())
 
@@ -121,7 +122,7 @@ def test_a_corporation_alert_covers_both_facets(
         taxonomy.FacetType.CONTACT,
         taxonomy.FacetType.ACL,
     }
-    assert "contact standing and ACL access" in corp.summary
+    assert "contact standings and ACL access" in corp.summary
 
 
 @pytest.mark.parametrize("treat_as_removed", [True, False])
@@ -183,6 +184,7 @@ def test_one_acl_seen_through_two_characters_yields_one_facet(
     entry = [{"corporation_id": 98009999, "access": "Allowed"}]
     acl_row(access_list_id=7001, character_id=95000001, corporations=entry)
     acl_row(access_list_id=7001, character_id=95000002, corporations=entry)
+    AccessListPolicy.objects.create(access_list_id=7001)
 
     candidates, _ = detect.evaluate(alert_settings, make_snapshot())
 
@@ -248,7 +250,7 @@ def test_allow_everyone_suppresses_the_missing_family(
 def test_present_acl_access_alerts_without_any_policy(
     alert_settings, stub_aa_contacts, make_snapshot, acl_row
 ):
-    """ "On an ACL with no Auth user" is true regardless of intended access."""
+    """Unconfigured ACLs are outside the opt-in monitoring scope."""
     stub_aa_contacts(alliance_rows=[])
     acl_row(
         access_list_id=7001,
@@ -258,9 +260,7 @@ def test_present_acl_access_alerts_without_any_policy(
 
     candidates, _ = detect.evaluate(alert_settings, make_snapshot())
 
-    char = next(c for c in candidates if c.entity_id == 95009999)
-    assert char.alert_type == taxonomy.AlertType.PRESENT_WITHOUT_AUTH_USER
-    assert char.facets[0].access_list_name == "Staging"
+    assert candidates == []
 
 
 # -- entity scope -----------------------------------------------------------
@@ -345,8 +345,7 @@ def test_a_disabled_policy_still_reports_present_acl_access(
 
     candidates, _ = detect.evaluate(alert_settings, make_snapshot())
 
-    char = next(c for c in candidates if c.entity_id == 95009999)
-    assert [f.facet_type for f in char.facets] == [taxonomy.FacetType.ACL]
+    assert candidates == []
 
 
 def test_alert_unexpected_false_narrows_a_dual_facet_alert(
@@ -370,4 +369,4 @@ def test_alert_unexpected_false_narrows_a_dual_facet_alert(
 
     corp = next(c for c in candidates if c.entity_id == 98009999)
     assert [f.facet_type for f in corp.facets] == [taxonomy.FacetType.CONTACT]
-    assert corp.summary == "Third Party has contact standing"
+    assert corp.summary == "Third Party has contact standings"
