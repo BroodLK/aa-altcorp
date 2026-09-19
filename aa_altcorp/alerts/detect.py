@@ -333,10 +333,12 @@ def _present_facets(key, blue, acl_access, acl_names, policies_by_acl):
         )
     for access_list_id in sorted(acl_access.get(key, set())):
         policy = policies_by_acl.get(access_list_id)
-        if policy is not None and not policy.alert_unexpected:
+        if policy is None:
+            # ACL monitoring is opt-in: a synced list is not necessarily in use.
+            continue
+        if not policy.alert_unexpected:
             # The operator has said unexpected access on this list is not worth
-            # alerting on.  An ACL with no policy still alerts: "present but
-            # unjustified" is true regardless of what access was intended.
+            # alerting on.
             continue
         facets.append(
             CandidateFacet(

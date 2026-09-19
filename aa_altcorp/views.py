@@ -10,6 +10,7 @@ from esi.decorators import token_required
 from esi.models import Token
 
 from .models import (
+    AccessListPolicy,
     AltCharacter,
     AltCorporation,
     AltCorpSettings,
@@ -134,7 +135,42 @@ def contacts(request):
 def access_lists(request):
     """Display the latest ESI ACL snapshots for managed characters."""
     access_lists = CharacterAccessList.objects.order_by("character_id", "name")
-    return render(request, "aa_altcorp/access_lists.html", {"access_lists": access_lists})
+    monitored = set(
+        AccessListPolicy.objects.filter(enabled=True).values_list("access_list_id", flat=True)
+    )
+    return render(
+        request,
+        "aa_altcorp/access_lists.html",
+        {"access_lists": access_lists, "monitored_access_lists": monitored},
+    )
+
+
+@permission_required("aa_altcorp.manage_relationships")
+@require_POST
+def toggle_access_list_monitoring(request):
+    """Opt an ACL into or out of alert monitoring."""
+    access_list_id = _posted_id(request, "access_list_id")
+    if access_list_id is None:
+        messages.error(request, "Pick an access list first.")
+        return redirect("aa_altcorp:access_lists")
+    name = (
+        CharacterAccessList.objects.filter(access_list_id=access_list_id)
+        .values_list("name", flat=True)
+        .first()
+        or f"ACL {access_list_id}"
+    )
+    policy, created = AccessListPolicy.objects.get_or_create(
+        access_list_id=access_list_id,
+        defaults={"name": name, "enabled": True},
+    )
+    if not created:
+        policy.enabled = not policy.enabled
+        policy.save(update_fields=("enabled", "updated_at"))
+    messages.success(
+        request,
+        f"{name} is now {'being monitored' if policy.enabled else 'ignored by alerts'}.",
+    )
+    return redirect("aa_altcorp:access_lists")
 
 
 @login_required
