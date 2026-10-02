@@ -35,7 +35,7 @@ async def post_alert(bot, alert_pk):
     if payload is None:
         logger.info("Alert %s vanished before it could be posted", alert_pk)
         return
-    channel_id, embed, actions_and_labels = payload
+    channel_id, old_message_id, embed, actions_and_labels = payload
     view = _make_view(actions_and_labels)
 
     channel = bot.get_channel(channel_id)
@@ -43,6 +43,15 @@ async def post_alert(bot, alert_pk):
         # Raise rather than swallow: aadiscordbot's task runner reports this,
         # and a silently undelivered alert is worse than a logged failure.
         raise RuntimeError(f"Discord channel {channel_id} is not visible to the bot")
+
+    if old_message_id:
+        try:
+            async with _discord_request_slot():
+                old_message = await channel.fetch_message(old_message_id)
+            async with _discord_request_slot():
+                await old_message.delete()
+        except discord.NotFound:
+            logger.info("Previous alert message %s was already deleted", old_message_id)
 
     async with _discord_request_slot():
         message = await channel.send(embed=discord.Embed.from_dict(embed), view=view)
@@ -101,6 +110,7 @@ def _load_for_post(alert_pk):
     labels = {action: actions.action_label(alert, action) for action in available}
     return (
         int(settings.discord_channel_id),
+        int(alert.discord_message_id) if alert.discord_message_id else None,
         embeds.alert_embed(alert),
         _view_data(alert.pk, available, labels),
     )

@@ -108,7 +108,7 @@ def test_a_partial_action_narrows_the_message(alert_settings, make_alert, stub_d
     asyncio.run(modal.callback(interaction))
 
     edit = interaction.response.edits[0]
-    assert edit["embed"]["title"] != "RESOLVED IN AUTH"
+    assert not edit["embed"]["title"].startswith("Resolved: ")
     assert [item.label for item in edit["view"].children] == [
         "Mark Exempt",
         "Temporary ACL exemption",
@@ -129,7 +129,7 @@ def test_covering_everything_marks_the_message_resolved(
     asyncio.run(modal.callback(interaction))
 
     edit = interaction.response.edits[0]
-    assert edit["embed"]["title"] == "RESOLVED IN AUTH"
+    assert edit["embed"]["title"].startswith("Resolved: ")
     assert edit["view"] is None
     alert.refresh_from_db()
     assert alert.state == taxonomy.AlertState.SUPPRESSED
@@ -275,6 +275,15 @@ class FakeChannel:
         return self.fetched[message_id]
 
 
+class FakeMessage:
+    def __init__(self, message_id):
+        self.id = message_id
+        self.deleted = False
+
+    async def delete(self):
+        self.deleted = True
+
+
 class FakeBot:
     def __init__(self, channel=None):
         self.channel = channel
@@ -306,6 +315,27 @@ def test_posting_records_the_message_id(
     assert alert.discord_message_id == channel.message_id
     assert alert.discord_channel_id == 555
     assert channel.sent[0]["view"].children
+
+
+def test_realert_deletes_the_previous_message(
+    alert_settings, make_alert, stub_discord, monkeypatch, bot_db
+):
+    bot_functions = _bot_functions(stub_discord, monkeypatch)
+    alert_settings.discord_channel_id = 555
+    alert_settings.save()
+    alert = make_alert(facets=BOTH_FACETS)
+    alert.discord_channel_id = 555
+    alert.discord_message_id = 111
+    alert.save()
+    channel = FakeChannel(message_id=222)
+    previous = FakeMessage(111)
+    channel.fetched[111] = previous
+
+    asyncio.run(bot_functions.post_alert(FakeBot(channel), alert.pk))
+
+    assert previous.deleted
+    alert.refresh_from_db()
+    assert alert.discord_message_id == 222
 
 
 def test_an_invisible_channel_raises_rather_than_going_quiet(

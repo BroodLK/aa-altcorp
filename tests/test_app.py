@@ -707,7 +707,7 @@ def test_sync_forces_a_refresh_when_a_304_listing_has_nothing_stored(
 
     # Without the retry the cached ETag would wedge this character forever.
     assert client.Access_List.GetCharactersAccessListsListing.result_kwargs == [
-        {},
+        {"force_refresh": False},
         {"force_refresh": True},
     ]
     assert CharacterAccessList.objects.filter(character_id=CHARACTER_ID).count() == 1

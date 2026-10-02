@@ -24,7 +24,7 @@ The plugin supports Python 3.10 through 3.13 and requires:
 ```text
 Alliance Auth >= 5.3, < 6
 aa-contacts >= 1.0.1, < 2
-django-esi >= 9, < 10
+django-esi >= 10.0.0, < 11
 croniter >= 6, < 7
 django-celery-beat >= 2.7, < 3
 ```

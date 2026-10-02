@@ -7,9 +7,9 @@ from django.test import TestCase
 
 from aa_altcorp.management.commands.schedule_altcorp_tasks import (
     AUDIT_TASK_NAME,
+    FORCE_REFRESH_TASK_NAME,
     REFRESH_TASK_NAME,
     SCAN_TASK_NAME,
-    FORCE_REFRESH_TASK_NAME,
 )
 
 ALL_TASK_NAMES = (AUDIT_TASK_NAME, SCAN_TASK_NAME, REFRESH_TASK_NAME, FORCE_REFRESH_TASK_NAME)

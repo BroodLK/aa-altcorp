@@ -153,8 +153,7 @@ class AuthSnapshot:
         # attached to the corporation.  Include it in the same association map
         # used by users_for() so alert displays agree with the relationships
         # page.
-        from ..models import AltCorporation
-        from ..models import AltCharacter
+        from ..models import AltCharacter, AltCorporation
 
         for corporation_id, user_id in AltCorporation.objects.values_list(
             "corporation_id", "user_id"
